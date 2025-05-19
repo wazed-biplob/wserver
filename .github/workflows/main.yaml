@@ -1,0 +1,79 @@
+jobs:
+  ssh-connection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key and config
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add EC2 host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: SSH into EC2 and run a command
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo 'SSH connection successful!'"
+
+# name: deploy to ec2
+# on:
+#   push:
+#     branches: [main]
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: configure SSH
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+#         run: |
+#           mkdir -p ~/.ssh
+#           printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+#           chmod 600 ~/.ssh/id_rsa
+#           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+#       - name: Check SSH key format (DEBUG ONLY)
+#         run: |
+#           head -n 5 ~/.ssh/id_rsa
+
+#       - name: Check key file
+#         env:
+#           EC2_USER: ${{ secrets.EC2_USER }}
+#           EC2_HOST: ${{ secrets.EC2_HOST }}
+#         run: |
+#           ls -l ~/.ssh
+#           file ~/.ssh/id_rsa
+#           ssh -vvv -i ~/.ssh/id_rsa $EC2_USER@$EC2_HOST true
+
+# - name: Test SSH Connection
+#   env:
+#     EC2_USER: ${{ secrets.EC2_USER }}
+#     EC2_HOST: ${{ secrets.EC2_HOST }}
+#   run: |
+#     ssh -vvv $EC2_USER@$EC2_HOST "echo connected"
+
+# - name: deploy to ec2
+
+#   env:
+#     EC2_USER: ${{ secrets.EC2_USER }}
+#     EC2_HOST: ${{ secrets.EC2_HOST }}
+#   run: |
+#     ssh $EC2_USER@$EC2_HOST "mkdir -p ~/app"
+#     rsync -avz \
+#     --delete \
+#     --exclude='node_modules' \
+#     --exclude='.git' \
+#     --exclude='.github' \
+
+#     . $EC2_USER@$EC2_HOST:~/app/
+
+#     ssh $EC2_USER@$EC2_HOST "cd ~/app && export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && npm install"
+
+#     ssh $EC2_USER@$EC2_HOST "export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && pm2 delete cicd || true"
+#     ssh $EC2_USER@$EC2_HOST "export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && cd ~/app && pm2 start /dist/server.js --name cicd"
