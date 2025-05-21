@@ -31,7 +31,7 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          ssh -i /tmp/ssh/windsshkey ec2-user@$EC2_HOST
+          ssh -i /tmp/ssh/windsshkey "$EC2_USER@$EC2_HOST" "echo connected"
 
 # name: deploy to ec2
 # on:
