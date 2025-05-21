@@ -24,30 +24,29 @@ jobs:
         run: npm run build
 
       - name: 🔐 Set up SSH key and known hosts
-        run: |
-          mkdir -p /tmp/ssh
-          echo "$SSH_PRIVATE_KEY" > /tmp/ssh/windsshkey
-          chmod 600 /tmp/ssh/windsshkey
 
+        run: |
           mkdir -p ~/.ssh
+          printf "%s\n" "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           chmod 700 ~/.ssh
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
       - name: 🚀 Deploy to EC2
         run: |
-          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST "echo Connected!"
-          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST "mkdir -p ~/myapp"
+          ssh $EC2_USER@$EC2_HOST "echo Connected!"
+          ssh $EC2_USER@$EC2_HOST "mkdir -p ~/myapp"
 
-          rsync -avz \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='.github' \
-            -e "ssh -i /tmp/ssh/windsshkey" \
-            . $EC2_USER@$EC2_HOST:~/myapp/
+          # rsync -avz \
+          #   --exclude='.git' \
+          #   --exclude='node_modules' \
+          #   --exclude='.github' \
+          #   -e "ssh -i /tmp/ssh/windsshkey" \
+          #   . $EC2_USER@$EC2_HOST:~/myapp/
 
-          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST << 'EOF'
-            cd ~/myapp
+          # ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST << 'EOF'
+          #   cd ~/myapp
 
-            pm2 reload myapp || true
-            pm2 start dist/server.js --name myapp
-          EOF
+          #   pm2 reload myapp || true
+          #   pm2 start dist/server.js --name myapp
+          # EOF
