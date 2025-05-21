@@ -1,91 +1,52 @@
-name: SSH to EC2
+name: Build and Deploy to EC2
 
 on:
   push:
     branches:
       - main
-
 jobs:
-  ssh-connection:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
     steps:
-      - name: Checkout repo
+      - name: 🧾 Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup SSH key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🛠️ Build the app
+        run: npm run build
+
+      - name: 🔐 Set up SSH key and known hosts
         run: |
           mkdir -p /tmp/ssh
           echo "$SSH_PRIVATE_KEY" > /tmp/ssh/windsshkey
           chmod 600 /tmp/ssh/windsshkey
-          chmod 700 /tmp/ssh
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      - name: SSH into EC2 and run a command
-        env:
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+      - name: 🚀 Deploy to EC2
         run: |
-          ssh -i /tmp/ssh/windsshkey "$EC2_USER@$EC2_HOST" "echo connected"
+          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST "mkdir -p ~/myapp"
 
-# name: deploy to ec2
-# on:
-#   push:
-#     branches: [main]
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+          rsync -avz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.github' \
+            -e "ssh -i /tmp/ssh/windsshkey" \
+            . $EC2_USER@$EC2_HOST:~/myapp/
 
-#     steps:
-#       - name: configure SSH
-#         env:
-#           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-#         run: |
-#           mkdir -p ~/.ssh
-#           printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-#           chmod 600 ~/.ssh/id_rsa
-#           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-#       - name: Check SSH key format (DEBUG ONLY)
-#         run: |
-#           head -n 5 ~/.ssh/id_rsa
+          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST << 'EOF'
+            cd ~/myapp
 
-#       - name: Check key file
-#         env:
-#           EC2_USER: ${{ secrets.EC2_USER }}
-#           EC2_HOST: ${{ secrets.EC2_HOST }}
-#         run: |
-#           ls -l ~/.ssh
-#           file ~/.ssh/id_rsa
-#           ssh -vvv -i ~/.ssh/id_rsa $EC2_USER@$EC2_HOST true
-
-# - name: Test SSH Connection
-#   env:
-#     EC2_USER: ${{ secrets.EC2_USER }}
-#     EC2_HOST: ${{ secrets.EC2_HOST }}
-#   run: |
-#     ssh -vvv $EC2_USER@$EC2_HOST "echo connected"
-
-# - name: deploy to ec2
-
-#   env:
-#     EC2_USER: ${{ secrets.EC2_USER }}
-#     EC2_HOST: ${{ secrets.EC2_HOST }}
-#   run: |
-#     ssh $EC2_USER@$EC2_HOST "mkdir -p ~/app"
-#     rsync -avz \
-#     --delete \
-#     --exclude='node_modules' \
-#     --exclude='.git' \
-#     --exclude='.github' \
-
-#     . $EC2_USER@$EC2_HOST:~/app/
-
-#     ssh $EC2_USER@$EC2_HOST "cd ~/app && export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && npm install"
-
-#     ssh $EC2_USER@$EC2_HOST "export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && pm2 delete cicd || true"
-#     ssh $EC2_USER@$EC2_HOST "export PATH=\$PATH:/run/user/1000/fnm_multishells/112424_1734077954807/bin && cd ~/app && pm2 start /dist/server.js --name cicd"
+            pm2 reload myapp || true
+            pm2 start dist/server.js --name myapp
+          EOF
