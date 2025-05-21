@@ -45,6 +45,7 @@ jobs:
 
           ssh $EC2_USER@$EC2_HOST << 'EOF'
           cd ~/myapp
+          npm install --production
           pm2 reload myapp || pm2 start dist/server.js --name myapp
 
           EOF
