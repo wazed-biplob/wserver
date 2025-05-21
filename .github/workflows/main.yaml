@@ -35,6 +35,7 @@ jobs:
 
       - name: 🚀 Deploy to EC2
         run: |
+          ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST "echo Connected!"
           ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST "mkdir -p ~/myapp"
 
           rsync -avz \
