@@ -22,6 +22,8 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > /tmp/ssh/windsshkey
           chmod 600 /tmp/ssh/windsshkey
           chmod 700 /tmp/ssh
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
       - name: SSH into EC2 and run a command
