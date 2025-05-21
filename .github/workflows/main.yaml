@@ -37,16 +37,14 @@ jobs:
           ssh $EC2_USER@$EC2_HOST "echo Connected!"
           ssh $EC2_USER@$EC2_HOST "mkdir -p ~/myapp"
 
-          # rsync -avz \
-          #   --exclude='.git' \
-          #   --exclude='node_modules' \
-          #   --exclude='.github' \
-          #   -e "ssh -i /tmp/ssh/windsshkey" \
-          #   . $EC2_USER@$EC2_HOST:~/myapp/
+          rsync -avz \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='.github' \
+          . $EC2_USER@$EC2_HOST:~/myapp/
 
-          # ssh -i /tmp/ssh/windsshkey $EC2_USER@$EC2_HOST << 'EOF'
-          #   cd ~/myapp
+          ssh $EC2_USER@$EC2_HOST << 'EOF'
+          cd ~/myapp
+          pm2 reload myapp || pm2 start dist/server.js --name myapp
 
-          #   pm2 reload myapp || true
-          #   pm2 start dist/server.js --name myapp
-          # EOF
+          EOF
